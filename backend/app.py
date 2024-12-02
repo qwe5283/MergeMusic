@@ -46,15 +46,21 @@ def cdn_cache(filename):
     return send_from_directory("../cdn_cache/", filename)
 
 
-@app.route("/fonts/<path:filename>", methods=["GET"])
+@app.route("/fonts/<filename>", methods=["GET"])
 def fonts_cache(filename):
+    print(f"Get Font: {filename}")
     file = ""
-    if filename in "materialdesignicons-webfont.woff2":
-        file = "cdn_cache/fonts/materialdesignicons-webfont.woff2"
-    elif filename in "materialdesignicons-webfont.woff":
-        file = "cdn_cache/fonts/materialdesignicons-webfont.woff"
-    elif filename in "materialdesignicons-webfont.ttf":
-        file = "cdn_cache/fonts/materialdesignicons-webfont.ttf"
+    if filename == "materialdesignicons-webfont.woff2":
+        print("1")
+        file = "materialdesignicons-webfont.woff2"
+    elif filename == "materialdesignicons-webfont.woff":
+        print("2")
+        file = "materialdesignicons-webfont.woff"
+    elif filename == "materialdesignicons-webfont.ttf":
+        print("3")
+        file = "materialdesignicons-webfont.ttf"
+    else:
+        print("error")
     return send_from_directory("../cdn_cache/fonts/", file)
 
 
@@ -78,6 +84,12 @@ def music_():
 
 # 缓存文件储存
 app.config["UPLOAD_FOLDER"] = "../music_cache"
+
+
+# 图标
+@app.route("/favicon.ico")
+def get_icon():
+    return send_from_directory("..", "favicon.ico")
 
 
 # 音乐缓存下载服务

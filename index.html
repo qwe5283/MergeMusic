@@ -446,6 +446,12 @@
 				<v-list-item-content>
 					<v-list-item-title>{{music.name}}</v-list-item-title>
 					<v-list-item-subtitle>
+							<v-btn icon small :color="music.color" @click.stop="GoTop()">
+								<v-icon>mdi-arrow-collapse-up</v-icon>
+							</v-btn>
+							<v-btn icon small :color="music.color" @click.stop="GoBottom()">
+								<v-icon>mdi-arrow-collapse-down</v-icon>
+							</v-btn>
 							<v-btn icon small :color="music.color" @click.stop="GoUp()">
 								<v-icon>arrow_upward</v-icon>
 							</v-btn>
@@ -482,6 +488,22 @@
 					pl = _this.play_list.concat();
 					if (key == pl.length - 1) return;
 					key2 = (key + 1 + pl.length) % pl.length;
+					Vue.set(_this.play_list, key, pl[key2]);
+					Vue.set(_this.play_list, key2, pl[key]);
+				},
+				GoTop() {
+					key = this.index;
+					pl = _this.play_list.concat();
+					if (key == 0) return;
+					key2 = 0;
+					Vue.set(_this.play_list, key, pl[key2]);
+					Vue.set(_this.play_list, key2, pl[key]);
+				},
+				GoBottom() {
+					key = this.index;
+					pl = _this.play_list.concat();
+					if (key == pl.length - 1) return;
+					key2 = pl.length - 1;
 					Vue.set(_this.play_list, key, pl[key2]);
 					Vue.set(_this.play_list, key2, pl[key]);
 				},
