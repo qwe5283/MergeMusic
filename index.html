@@ -8,14 +8,23 @@
 	<title>MergeMusic</title>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
+	<!-- <script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/axios@0.21.0/dist/axios.min.js"></script>
 	<link href="https://fonts.googleapis.com/css?family=Material+Icons" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css" rel="stylesheet">
 	<link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
 	<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/vue-clipboard2@0.3.1/dist/vue-clipboard.min.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/vue-router@3.4.9/dist/vue-router.min.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/vue-router@3.4.9/dist/vue-router.min.js"></script> -->
+	<script src="cdn_cache/vue.js"></script>
+	<script src="cdn_cache/axios.min.js"></script>
+	<link rel="stylesheet" href="cdn_cache/css.css">
+	<link rel="stylesheet" href="cdn_cache/materialdesignicons.min.css">
+	<!-- <link href="https://cdn.jsdelivr.net/npm/@mdi/font/css/materialdesignicons.min.css" rel="stylesheet"> -->
+	<link rel="stylesheet" href="cdn_cache/vuetify.min.css">
+	<script src="cdn_cache/vuetify.js"></script>
+	<script src="cdn_cache/vue-clipboard.min.js"></script>
+	<script src="cdn_cache/vue-router.min.js"></script>
 	<!--引入思源字体-->
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC:100,300,400,500,700,900">
 
@@ -122,23 +131,12 @@
 				<v-row justify="center">
 					<v-col class="pa-0" xl=6 lg=7 md=8 sm=10 xs=12>
 						<v-card class="op" justify="center" outlined>
-							<!-- <p class="ma-0 mb-n4" id="sand">云南师大附中学联网络部 版权所有</p> -->
-							<v-container class="mb-n3">
-								<v-row justify="center">
-									<v-chip color="pink lighten-3" small outlined
-										href="https://space.bilibili.com/27482524" target="_blank">
-										<v-icon small>mdi-television-classic</v-icon>bilibili@范滇东
-									</v-chip>
-									<v-chip color="cyan lighten-3" small outlined
-										href="https://github.com/flwfdd/MergeMusic" target="_blank">
-										<v-icon small>mdi-github</v-icon>Github
-									</v-chip>
-								</v-row>
-							</v-container>
-
 							<h1 id="title">MergeMusic</h1>
-							<p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;">{{hitokoto}}
-							</p>
+							<!-- <p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;">{{hitokoto}}
+							</p> -->
+							<p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;"
+								@dblclick="shutdown">
+								{{serverinfo}}</p>
 
 							<v-row class="ma-2" justify="center">
 								<v-col class="pa-0" cols=12>
@@ -502,8 +500,11 @@
 			el: "#app",
 			router,
 			data: {
-				//   apiurl: "http://127.0.0.1:9000",
-				apiurl:"https://service-6xbkkinf-1255944436.cd.apigw.tencentcs.com/release",
+				apiurl: "http://" + window.location.host,
+				// apiurl: "http://127.0.0.1:9000",
+				// apiurl: "http://192.168.182.32:9000",
+				// apiurl: "http://116.198.201.67:9000",
+				//  apiurl:"https://service-6xbkkinf-1255944436.cd.apigw.tencentcs.com/release",
 				name: "",
 				platform: "C",
 				type: "music",
@@ -516,6 +517,7 @@
 				nowtlrc: "如提示错误可能为服务器压力过大或为VIP音乐，本站当前不会支持VIP音乐，请尊重版权♪(´▽｀)",
 				looptype: 0,
 				hitokoto: "",
+				serverinfo: "",
 				show_play_list: false,
 				dialog_open: false,
 				dialog_data: {},
@@ -530,15 +532,15 @@
 				],
 				platforms: [
 					{ "text": "网易云", "value": "C" },
-					{ "text": "QQ", "value": "Q" },
+					{ "text": "QQ音乐", "value": "Q" },
 					{ "text": "bilibili", "value": "B" },
 					// { "text": "SakuraCloud", "value": "S" }
 				],
 				types: [
 					{ "text": "歌曲", "value": "music" },
-					{ "text": "歌单", "value": "list" },
-					{ "text": "用户|UP主", "value": "user" },
-					{ "text": "歌词", "value": "lrc" }
+					// { "text": "歌单", "value": "list" },
+					// { "text": "用户|UP主", "value": "user" },
+					// { "text": "歌词", "value": "lrc" }
 				],
 				looptypes: [
 					{ "text": "顺序", "value": "0" },
@@ -594,7 +596,7 @@
 							type: "music",
 						}
 					}).then((response) => {
-						let mmusic=JSON.parse(JSON.stringify(response.data));
+						let mmusic = JSON.parse(JSON.stringify(response.data));
 						this.nowmusic = response.data
 						document.querySelector("#bgimg").style.backgroundImage = "url(" + this.nowmusic.img + ")";
 						this.nowlrc = this.nowtlrc = ""
@@ -684,6 +686,7 @@
 					this.Search();
 				},
 				Download(mid, type) { //下载
+					console.log("download");
 					if (type == 'share') {
 						this.clip_tmp = window.location.origin + window.location.pathname + "#/?mid=" + mid;
 						this.clip_dialog = true;
@@ -709,6 +712,7 @@
 						})
 				},
 				AddMusic(music, type) { //添加歌曲或歌单到播放列表
+					console.log("Add Music");
 					if (music.type == "music") this.AddList([music], type);
 					else { //如果是歌单什么的就要先获取歌曲列表（解包）
 						axios.get(this.apiurl + "/music/", {
@@ -722,6 +726,7 @@
 					}
 				},
 				AddList(list, type) { //添加数个音乐到播放列表
+
 					if (type == "replace") { //替换
 						this.play_list = list.concat();
 						this.tab = 1;
@@ -749,6 +754,24 @@
 					axios.get("https://v1.hitokoto.cn/")
 						.then((res) => {
 							this.hitokoto = res.data.hitokoto + "  ——" + res.data.from;
+						})
+				},
+				shutdown() {
+					passwd = prompt("use password to continue:");
+					if (passwd) {
+						axios.get(this.apiurl + "/server_api/shutdown", {
+							params: {
+								passwd: passwd
+							}
+						}).then((r) => {
+							alert(r.data);
+						})
+					}
+				},
+				UpServerInfo() {
+					axios.get(this.apiurl + "/server_api/sys_info")
+						.then((r) => {
+							this.serverinfo = "PID: " + r.data.pid;
 						})
 				},
 				ClipSuccess(e) { //剪贴板回调
@@ -802,17 +825,19 @@
 								this.AddMusic(mmusic, 'front');
 							}
 						}
+
 					}
 					else {
 						this.nowmusic = {};
 					}
 				},
-				save_list(){
-					localStorage.setItem("save_list",JSON.parse(this.save_list));
+				save_list() {
+					localStorage.setItem("save_list", JSON.parse(this.save_list));
 				}
 			},
 			created() {
 				_this = this;
+
 
 				axios.interceptors.response.use(response => {
 					// 2xx 范围内的状态码都会触发该函数。
@@ -826,17 +851,17 @@
 				});
 
 				setInterval(this.UpLrc, 100);
-				this.UpHitokoto();
-				setInterval(this.UpHitokoto, 10000);
+				this.UpServerInfo();
+				//this.UpHitokoto();
+				//setInterval(this.UpHitokoto, 10000);
 				setTimeout(() => {
 					this.$refs["player"].addEventListener('ended', () => {
 						this.PlayNext();
 					});
 				}, 1000)
 
-				if(localStorage.getItem("save_list"))
-				{
-					this.save_list=JSON.parse(localStorage.getItem("save_list"));
+				if (localStorage.getItem("save_list")) {
+					this.save_list = JSON.parse(localStorage.getItem("save_list"));
 				}
 				if (this.save_list && localStorage.getItem("play_list")) {
 					this.play_list = JSON.parse(localStorage.getItem("play_list"));
