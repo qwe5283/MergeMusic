@@ -446,8 +446,8 @@
 				<v-list-item-content>
 					<v-list-item-title>{{music.name}}</v-list-item-title>
 					<v-list-item-subtitle>
-							<v-btn icon small :color="music.color" @click.stop="GoTop()">
-								<v-icon>mdi-arrow-collapse-up</v-icon>
+							<v-btn icon small :color="music.color" @click.stop="GoNext()">
+								<v-icon>mdi-skip-next</v-icon>
 							</v-btn>
 							<v-btn icon small :color="music.color" @click.stop="GoBottom()">
 								<v-icon>mdi-arrow-collapse-down</v-icon>
@@ -491,21 +491,29 @@
 					Vue.set(_this.play_list, key, pl[key2]);
 					Vue.set(_this.play_list, key2, pl[key]);
 				},
-				GoTop() {
+				GoNext() {
 					key = this.index;
 					pl = _this.play_list.concat();
-					if (key == 0) return;
-					key2 = 0;
-					Vue.set(_this.play_list, key, pl[key2]);
-					Vue.set(_this.play_list, key2, pl[key]);
+					if (key == 0) {
+						_this.Msg("播放中的音乐无法设为下一首播放(･∀･)")
+						return;
+					} else if (key == 1) {
+						return;
+					}
+					pl.splice(1, 0, pl.splice(key, 1)[0])
+					for (i in _this.play_list) {
+						Vue.set(_this.play_list, i, pl[i]);
+					}
 				},
 				GoBottom() {
 					key = this.index;
 					pl = _this.play_list.concat();
 					if (key == pl.length - 1) return;
-					key2 = pl.length - 1;
-					Vue.set(_this.play_list, key, pl[key2]);
-					Vue.set(_this.play_list, key2, pl[key]);
+					pl.push(pl.splice(key, 1)[0])
+					// 应用pl
+					for (i in _this.play_list) {
+						Vue.set(_this.play_list, i, pl[i]);
+					}
 				},
 				Delete() {
 					_this.play_list.splice(this.index, 1);
@@ -677,7 +685,7 @@
 				},
 				PlayNext() { //下一首
 					au = this.$refs['player'];
-					if (this.looptype == 0) {
+					if (this.looptype == 0) { //顺序
 						if (this.play_list.length) {
 							this.play_list.push(this.play_list.shift());
 							if (this.play_list.length == 1) au.currentTime = 0, au.play();
@@ -686,7 +694,7 @@
 							this.nowmusic.src = "";
 						}
 					}
-					if (this.looptype == 2) {
+					if (this.looptype == 2) { // 随机
 						if (this.play_list.length) {
 							ind = Math.floor(Math.random() * this.play_list.length)
 							if (ind == 0) au.currentTime = 0, au.play();
@@ -696,7 +704,7 @@
 							this.nowmusic.src = "";
 						}
 					}
-					if (this.looptype == 1) {
+					if (this.looptype == 1) { // 单曲
 						au.currentTime = 0;
 						au.play();
 					}
@@ -734,7 +742,6 @@
 						})
 				},
 				AddMusic(music, type) { //添加歌曲或歌单到播放列表
-					console.log("Add Music");
 					if (music.type == "music") this.AddList([music], type);
 					else { //如果是歌单什么的就要先获取歌曲列表（解包）
 						axios.get(this.apiurl + "/music/", {
