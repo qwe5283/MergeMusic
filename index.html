@@ -131,9 +131,20 @@
 				<v-row justify="center">
 					<v-col class="pa-0" xl=6 lg=7 md=8 sm=10 xs=12>
 						<v-card class="op" justify="center" outlined>
+							<!-- 链接 -->
+							<v-container class="mb-n3">
+								<v-row justify="center">
+									<v-chip color="cyan lighten-3" small outlined
+										href="https://github.com/qwe5283/MergeMusic" target="_blank">
+										<v-icon small>mdi-github</v-icon>Github
+									</v-chip>
+								</v-row>
+							</v-container>
+							<!-- 标题 -->
 							<h1 id="title">MergeMusic</h1>
-							<!-- <p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;">{{hitokoto}}
-							</p> -->
+							<!-- 一言 -->
+							<!-- <p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;">{{hitokoto}}</p> -->
+							<!-- 服务器运行状态 -->
 							<p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;"
 								@dblclick="shutdown">
 								{{serverinfo}}</p>
@@ -798,9 +809,12 @@
 					}
 				},
 				UpServerInfo() {
+					console.log("GetServerInfo")
 					axios.get(this.apiurl + "/server_api/sys_info")
 						.then((r) => {
-							this.serverinfo = "PID: " + r.data.pid;
+							this.serverinfo = "PID: " + r.data.pid + " |"
+								+ " CPU: " + r.data.cpu + " |"
+								+ " Memory: " + r.data.memory;
 						})
 				},
 				ClipSuccess(e) { //剪贴板回调
@@ -881,6 +895,7 @@
 
 				setInterval(this.UpLrc, 100);
 				this.UpServerInfo();
+				setInterval(this.UpServerInfo, 15000); // 15秒获取一次系统信息
 				//this.UpHitokoto();
 				//setInterval(this.UpHitokoto, 10000);
 				setTimeout(() => {

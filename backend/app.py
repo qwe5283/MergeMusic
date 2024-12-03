@@ -12,6 +12,7 @@ from flask import Flask, jsonify, request, send_from_directory
 import search
 import music
 import signal
+import psutil
 
 app = Flask(__name__)
 CORS(app, resources=r"/*")
@@ -22,7 +23,8 @@ def server_api(api):
     if api == "sys_info":
         info = {
             "pid": str(os.getpid()),
-            "cpu": None,
+            "cpu": str(psutil.cpu_percent()) + "%",
+            "memory": str(psutil.virtual_memory().percent) + "%",
         }
         return jsonify(info)
     elif api == "shutdown":
