@@ -130,6 +130,10 @@
 			<v-container fluid>
 				<v-row justify="center">
 					<v-col class="pa-0" xl=6 lg=7 md=8 sm=10 xs=12>
+						<!-- 用于选择歌单文件进行导入 -->
+						<v-file-input v-model="upFileInfo" ref="jsonFileInput" accept=".json" style="display:none;"
+							@change="ReadPlayListFromFile"></v-file-input>
+
 						<v-card class="op" justify="center" outlined>
 							<!-- 链接 -->
 							<v-container class="mb-n3">
@@ -150,6 +154,7 @@
 								{{serverinfo}}</p>
 
 							<v-row class="ma-2" justify="center">
+
 								<v-col class="pa-0" cols=12>
 									<v-text-field outlined dense hide-details color="cyan" label="搜索" v-model="name"
 										append-icon="search" @click:append="off=0;Search();"
@@ -235,14 +240,21 @@
 								<v-tab-item key="list">
 									<v-container>
 										<v-row>
-											<v-col class="pa-0 px-1" cols=6>
+											<v-col class="pa-0 px-1" cols=4>
 												<v-btn outlined block @click="ClearPlayList()">清空列表</v-btn>
 											</v-col>
-											<v-col class="pa-0 px-1" cols=6>
+											<v-col class="pa-0 px-1" cols=4>
 												<v-btn outlined block @click="ChangeSaveList()">
 													保存列表：{{save_list?"开":"关"}}
 												</v-btn>
 											</v-col>
+											<v-col class="pa-0 px-1" cols=4>
+												<v-btn outlined block
+													@click="play_list.length?DownloadPlayList():ImportPlayList()">{{play_list.length?"下载":"导入"}}列表</v-btn>
+											</v-col>
+											<!-- <v-col class="pa-0 px-1" cols=6>
+												<v-btn outlined block @click="ImportPlayList()">导入列表</v-btn>
+											</v-col> -->
 										</v-row>
 									</v-container>
 
@@ -351,7 +363,7 @@
 					{{snackbar_msg}}
 					<template v-slot:action="{attrs}">
 						<v-btn color="pink" text v-bind="attrs" @click="snackbar=false">
-							Close
+							OK
 						</v-btn>
 					</template>
 				</v-snackbar>
@@ -559,6 +571,7 @@
 				looptype: 0,
 				hitokoto: "",
 				serverinfo: "",
+				upFileInfo: null,
 				show_play_list: false,
 				dialog_open: false,
 				dialog_data: {},
@@ -602,6 +615,8 @@
 			},
 			methods: {
 				Search() { //搜索
+					if (!this.name) return;
+
 					this.show_play_list = false;
 					this.tab = 0;
 					this.dialog_open = false;
@@ -809,7 +824,6 @@
 					}
 				},
 				UpServerInfo() {
-					console.log("GetServerInfo")
 					axios.get(this.apiurl + "/server_api/sys_info")
 						.then((r) => {
 							this.serverinfo = "PID: " + r.data.pid + " |"
@@ -845,7 +859,45 @@
 				Msg(msg) { //提示框
 					this.snackbar_msg = msg;
 					this.snackbar = true;
-				}
+				},
+				DownloadPlayList() { //下载播放列表
+					const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(this.play_list, null, 2));
+					const downloadAnchorNode = document.createElement('a');
+
+					downloadAnchorNode.setAttribute("href", dataStr);
+					downloadAnchorNode.setAttribute("download", "play_list.json");
+					document.body.appendChild(downloadAnchorNode); // required for firefox
+					downloadAnchorNode.click();
+					downloadAnchorNode.remove();
+				},
+				ImportPlayList() { //上传播放列表
+					this.upFileInfo = null;
+					//显示文件选择框
+					this.$refs['jsonFileInput'].$refs.input.click();
+				},
+				ReadPlayListFromFile() {
+					const reader = new FileReader();
+					// 当文件被成功读取后触发此事件处理程序
+					reader.onload = function (e) {
+						const json_str = e.target.result;
+						try {
+							// 解析JSON字符串
+							pl = JSON.parse(json_str);
+							// 检验JSON是否为play_list
+
+							// 添加到列表
+							_this.play_list = pl
+							_this.Msg("已添加到列表(･∀･)");
+						} catch (error) {
+							console.error('Invalid JSON string:', error);
+							_this.Msg("文件解析失败(´･ω･`)");
+						}
+					}
+					// 读取文件
+					if (this.upFileInfo) {
+						reader.readAsText(this.upFileInfo);
+					}
+				},
 			},
 			watch: {
 				play_list() {
