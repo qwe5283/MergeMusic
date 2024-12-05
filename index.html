@@ -29,6 +29,16 @@
 	<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Noto+Serif+SC:100,300,400,500,700,900">
 
 	<style>
+		video {
+			position: fixed;
+			opacity: 0;
+		}
+
+		img,
+		canvas {
+			display: none;
+		}
+
 		#app {
 			font-family: Noto Serif SC;
 			font-style: normal;
@@ -130,6 +140,11 @@
 			<v-container fluid>
 				<v-row justify="center">
 					<v-col class="pa-0" xl=6 lg=7 md=8 sm=10 xs=12>
+						<!-- 用于绘制歌词画中画 -->
+						<img v-if="showPIP()" ref="lrcBg" width="450" height="540"></img>
+						<canvas v-if="showPIP()" ref="lrcCanvas" width="450" height="540"></canvas>
+						<video v-if="showPIP()" ref="lrcVideo" muted autoplay @enterpictureinpicture="onPIP=true"
+							@leavepictureinpicture="onPIP=false"></video>
 						<!-- 用于选择歌单文件进行导入 -->
 						<v-file-input v-model="upFileInfo" ref="jsonFileInput" accept=".json" style="display:none;"
 							@change="ReadPlayListFromFile"></v-file-input>
@@ -182,6 +197,10 @@
 								<v-col class="pa-0 pl-1 pb-2" cols=4>
 									<v-btn block outlined :disabled="!nowmusic.mid"
 										@click="dialog_data=nowmusic;dialog_open=true;">详情</v-btn>
+								</v-col>
+								<v-col class="pa-0 pl-1 pb-2" cols=12>
+									<v-btn block outlined :disabled="!nowmusic.mid"
+										@click="TogglePIP()">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
 								</v-col>
 
 								<audio style="width:100%;outline: medium;" ref="player" id="player"
@@ -252,9 +271,6 @@
 												<v-btn outlined block
 													@click="play_list.length?DownloadPlayList():ImportPlayList()">{{play_list.length?"下载":"导入"}}列表</v-btn>
 											</v-col>
-											<!-- <v-col class="pa-0 px-1" cols=6>
-												<v-btn outlined block @click="ImportPlayList()">导入列表</v-btn>
-											</v-col> -->
 										</v-row>
 									</v-container>
 
@@ -576,6 +592,7 @@
 				dialog_open: false,
 				dialog_data: {},
 				clip_tmp: "",
+				onPIP: false,
 				clip_dialog: false,
 				snackbar: false,
 				snackbar_msg: "",
@@ -588,7 +605,6 @@
 					{ "text": "网易云", "value": "C" },
 					{ "text": "QQ音乐", "value": "Q" },
 					{ "text": "bilibili", "value": "B" },
-					// { "text": "SakuraCloud", "value": "S" }
 				],
 				types: [
 					{ "text": "歌曲", "value": "music" },
@@ -655,6 +671,15 @@
 						let mmusic = JSON.parse(JSON.stringify(response.data));
 						this.nowmusic = response.data
 						document.querySelector("#bgimg").style.backgroundImage = "url(" + this.nowmusic.img + ")";
+
+						if (document.pictureInPictureEnabled) { // 浏览器支持画中画, 缓存背景以便进行Canvas绘制
+							if (this.nowmusic.mid.startsWith('B')) { // B站源无需代理
+								this.$refs['lrcBg'].src = this.nowmusic.img
+							} else { // 通过后端代理传输图片，防止captureStream的跨域问题
+								this.$refs['lrcBg'].src = "/pic_proxy?pic_url=" + this.nowmusic.img;
+							}
+						}
+
 						this.nowlrc = this.nowtlrc = ""
 						this.nowmusic.lrcs = this.DecodeLrc(response.data.lrc);
 						if (response.data.tlrc) this.nowmusic.tlrcs = this.DecodeLrc(response.data.tlrc);
@@ -696,7 +721,12 @@
 					for (i = this.nowmusic.lrcs.length - 1; i >= 0; i--) {
 						if (t >= this.nowmusic.lrcs[i][0]) {
 							this.nowlrc = this.nowmusic.lrcs[i][1];
+							this.UpCanvas(i, false);
 							break;
+						} else if (t < this.nowmusic.lrcs[0][0]) {
+							this.nowlrc = " ";
+							this.UpCanvas(0, true);
+							break
 						}
 					}
 
@@ -898,6 +928,60 @@
 						reader.readAsText(this.upFileInfo);
 					}
 				},
+				TogglePIP() {
+					if (document.pictureInPictureElement) { // 退出画中画
+						document.exitPictureInPicture();
+					} else { // 进入画中画
+						if (document.pictureInPictureEnabled) {
+							this.$refs['lrcVideo'].requestPictureInPicture().catch(err => {
+								console.log("画中画开启失败");
+								this.Msg("画中画开启失败");
+							})
+						} else {
+							console.log("画中画模式不受支持");
+							this.Msg("画中画模式不受支持(´･ω･`)");
+						}
+					}
+				},
+				showPIP() {
+					return document.pictureInPictureEnabled;
+				},
+				UpCanvas(currentIndex, isEmpty) { // 定时调用, 绘制动态歌词, isEmpty: 首句歌词前奏
+					const canvas = this.$refs['lrcCanvas'];
+					const ctx = canvas.getContext('2d');
+					const h = canvas.height;
+					const w = canvas.width;
+					const line_height = 45;
+					// 清空画布
+					ctx.clearRect(0, 0, w, h);
+
+					// 字体对齐方式
+					ctx.textAlign = 'center';
+					ctx.textBaseline = 'middle';
+
+					// 绘制背景
+					ctx.filter = "blur(12px) brightness(50%)";
+					const img = this.$refs['lrcBg'];
+					ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
+
+					// 绘制歌名
+					ctx.filter = "blur(0px) brightness(100%)";
+					ctx.font = 'bold 30px "Microsoft YaHei"';
+					ctx.fillStyle = "white";
+					ctx.fillText(this.nowmusic.name, w / 2, 60);
+
+					// 绘制歌词
+					ctx.font = '24px "Microsoft YaHei"';
+					for (i = currentIndex - 3, y = (h / 2) - (3 * line_height); i < currentIndex + 5; i++) {
+						if (i < 0 || i > this.nowmusic.lrcs.length - 1) {
+							y += line_height;
+							continue;
+						}
+						ctx.fillStyle = !isEmpty && i == currentIndex ? "white" : "grey";
+						ctx.fillText(this.nowmusic.lrcs[i][1], w / 2, Number(y));
+						y += line_height;
+					}
+				},
 			},
 			watch: {
 				play_list() {
@@ -970,6 +1054,13 @@
 				}
 
 				this.Msg("欢迎来到Ours-MergeMusic~");
+			},
+			mounted() {
+				const canvas = this.$refs['lrcCanvas'];
+				const video = this.$refs['lrcVideo'];
+				const stream = canvas.captureStream(30); // 30 FPS
+				video.srcObject = stream;
+
 			}
 		});
 
