@@ -239,7 +239,7 @@
 											</v-col>
 										</v-row>
 									</v-container>
-
+									<!-- 搜索列表 -->
 									<v-expand-transition>
 										<v-list class="op0" two-line>
 											<v-list-item-group>
@@ -322,6 +322,12 @@
 										@click="AddMusic(dialog_data,'replace')">
 										<v-icon left>play_arrow</v-icon>
 										替换播放
+									</v-btn>
+									<v-btn rounded outlined class="my-1" :color="dialog_data.color"
+										v-if="['music','p','list','fav','up'].indexOf(dialog_data.type)!=-1"
+										@click="AddMusic(dialog_data,'next')">
+										<v-icon left>mdi-skip-next</v-icon>
+										下首播放
 									</v-btn>
 									<v-btn rounded outlined class="my-1" :color="dialog_data.color"
 										v-if="['music','p','list','fav','up'].indexOf(dialog_data.type)!=-1"
@@ -415,6 +421,9 @@
 				<v-list-item-content>
 					<v-list-item-title>{{music.name}}</v-list-item-title>
 					<v-list-item-subtitle>
+							<v-btn icon small :color="music.color" @click.stop="AddToNextPlay()">
+								<v-icon>mdi-skip-next</v-icon>
+							</v-btn>
 							<template v-if="music.album.name">{{music.album.name}} - </template>
 							{{music.artist.join(" | ")}}
 					</v-list-item-subtitle>
@@ -458,7 +467,10 @@
 				OpenDialog() {
 					_this.dialog_data = this.music;
 					_this.dialog_open = true;
-				}
+				},
+				AddToNextPlay() {
+					_this.AddMusic(this.music, 'next');
+				},
 			},
 			watch: {
 				list() {
@@ -819,14 +831,22 @@
 					else {
 						music_list = [];
 						if (type == "front") { //添加到前部 需要去重
-							for (i in list) music_list.push(list[i].mid);
+							for (i in list) music_list.push(list[i].mid); // 从待添加播放列表生成对应的ID数组music_list
 							for (i in this.play_list) if (music_list.indexOf(this.play_list[i].mid) != -1) this.play_list.splice(i, 1);
 							this.play_list = list.concat(this.play_list);
+						} else if (type == "next") { //添加到下一个播放
+							for (i in list) music_list.push(list[i].mid); // 从待添加播放列表生成对应的ID数组music_list
+							for (i in this.play_list) if (music_list.indexOf(this.play_list[i].mid) != -1) this.play_list.splice(i, 1); // 遍历修改前列表，删除其中已存在的歌
+							if (this.play_list.length)
+								this.play_list = [this.play_list[0]].concat(list).concat(this.play_list.slice(1, this.play_list.length));
+							else
+								this.play_list = list;
+							this.Msg("已添加到下一个播放(･∀･)");
 						}
 						else { //添加到尾部
-							for (i in this.play_list) music_list.push(this.play_list[i].mid);
-							for (i in list) if (music_list.indexOf(list[i].mid) != -1) list.splice(i, 1);
-							this.play_list = this.play_list.concat(list);
+							for (i in this.play_list) music_list.push(this.play_list[i].mid); // 从修改前播放列表生成对应的ID数组music_list
+							for (i in list) if (music_list.indexOf(list[i].mid) != -1) list.splice(i, 1); // 遍历待添加列表，删除其中已存在的歌
+							this.play_list = this.play_list.concat(list); // 连接修改前播放列表与待添加列表
 							this.Msg("已添加到列表(･∀･)");
 						}
 					}
