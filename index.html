@@ -419,7 +419,10 @@
 				</v-list-item-avatar>
 
 				<v-list-item-content>
-					<v-list-item-title>{{music.name}}</v-list-item-title>
+					<v-list-item-title>
+						<v-chip v-if="music.vip" :color="music.color" label x-small outlined>VIP</v-chip>
+						{{music.name}}
+					</v-list-item-title>
 					<v-list-item-subtitle>
 							<v-btn icon small :color="music.color" @click.stop="AddToNextPlay()">
 								<v-icon>mdi-skip-next</v-icon>
@@ -735,12 +738,13 @@
 							this.nowlrc = this.nowmusic.lrcs[i][1];
 							this.UpCanvas(i, false);
 							break;
-						} else if (t < this.nowmusic.lrcs[0][0]) {
-							this.nowlrc = " ";
-							this.UpCanvas(0, true);
-							break
 						}
 					}
+					if (i == -1) { // 前奏
+						this.nowlrc = " ";
+						this.UpCanvas(0, true);
+					}
+
 
 					if (!this.nowmusic.tlrcs) return;
 					t = this.$refs["player"].currentTime;

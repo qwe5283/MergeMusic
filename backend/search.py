@@ -35,7 +35,7 @@ def cloud_search(keyword, Type, limit, offset):
         Type = typet["music"]
     offset = str(int(offset) * int(limit))
     url = api_search_url["C"].format(keyword, Type, limit, offset)
-    print(url)
+    # print(url)
     r = requests.get(url, headers=header)
 
     if Type == typet["music"] or Type == typet["lrc"]:
@@ -47,6 +47,7 @@ def cloud_search(keyword, Type, limit, offset):
             x["name"] = i["name"]
             x["artist"] = [j["name"] for j in i["artists"]]
             x["album"] = {"name": i["album"]["name"]}
+            x["vip"] = True if i["fee"] == 1 else False  # 是否需要VIP
             dic[ind] = x
     elif Type == typet["list"]:
         dic = json.loads(r.text)["result"]["playlists"]
@@ -90,9 +91,9 @@ def qq_search(keyword, Type, limit, offset):
         }
     }
     url = "https://u.y.qq.com/cgi-bin/musicu.fcg"
-    print(data)
+    # print(data)
     r = requests.post(url, data=json.dumps(data, ensure_ascii=False).encode("utf-8"))
-    print(r.text)
+    # print(r.text)
     dic = r.json()["music.search.SearchCgiService"]["data"]["body"]["song"]["list"]
 
     for ind, i in enumerate(dic):
@@ -104,6 +105,7 @@ def qq_search(keyword, Type, limit, offset):
         x["name"] = i["name"]
         x["artist"] = [j["name"] for j in i["singer"]]
         x["album"] = {"name": i["album"]["name"]}
+        x["vip"] = True if i["pay"]["pay_play"] == 1 else False
         dic[ind] = x
 
     return dic
