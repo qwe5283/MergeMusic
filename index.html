@@ -611,6 +611,7 @@
 				onPIP: false, // 是否处于画中画模式
 				onPause: true, // 音乐是否暂停中
 				domTitle: "MergeMusic", // 绑定标签页标题
+				preMusic: null, // 记录上一首音乐
 				clip_dialog: false,
 				snackbar: false,
 				snackbar_msg: "",
@@ -761,8 +762,29 @@
 						}
 					}
 				},
+				PlayPre() { //上一首(点歌时无法记录上一首信息)
+					au = this.$refs['player'];
+					if (this.play_list.length) {
+						if (this.preMusic) { //存在上首记录
+							ind = this.play_list.indexOf(this.preMusic);//获得索引
+							if (ind <= 0) {//上首歌从列表被移除或为自身
+								this.play_list.unshift(this.play_list.pop());//无上首记录，取列表底部音乐
+								if (this.play_list.length == 1) au.currentTime = 0, au.play();
+							} else {//移至列表顶部
+								this.play_list.unshift(this.play_list.splice(ind, 1)[0]);
+							}
+						} else { //无上首记录，取列表底部音乐
+							this.play_list.unshift(this.play_list.pop());
+							if (this.play_list.length == 1) au.currentTime = 0, au.play();
+
+						}
+					} else {
+						this.nowmusic.src = "";
+					}
+				},
 				PlayNext() { //下一首
 					au = this.$refs['player'];
+					this.preMusic = this.play_list[0];//记录上一首
 					if (this.looptype == 0) { //顺序
 						if (this.play_list.length) {
 							this.play_list.push(this.play_list.shift());
@@ -961,11 +983,9 @@
 				TogglePlay(toPlay) { // 播放暂停状态切换
 					if (toPlay) {
 						this.onPause = false;
-						console.log("播放");
 					} else {
 						this.onPause = true;
 						this.domTitle = "MergeMusic"
-						console.log("暂停");
 					}
 
 				},
@@ -1055,8 +1075,8 @@
 					localStorage.setItem("save_list", JSON.parse(this.save_list));
 				},
 				domTitle(newTitle) { // 监听并设置标签页标题
-					// 忽略空串与空格串, B站源无歌词
-					document.title = newTitle.trim().length === 0 || this.nowmusic.mid.startsWith('B') ? "MergeMusic" : newTitle;
+					// 忽略空串与空格串
+					document.title = newTitle.trim().length === 0 || newTitle === "木有歌词哦" ? "MergeMusic" : newTitle;
 				},
 			},
 			created() {
@@ -1101,11 +1121,27 @@
 				this.Msg("欢迎来到Ours-MergeMusic~");
 			},
 			mounted() {
-				const canvas = this.$refs['lrcCanvas'];
-				const video = this.$refs['lrcVideo'];
-				const stream = canvas.captureStream(30); // 30 FPS
-				video.srcObject = stream;
+				// 绑定画中画视频流
+				if (document.pictureInPictureEnabled) {
+					const canvas = this.$refs['lrcCanvas'];
+					const video = this.$refs['lrcVideo'];
+					const stream = canvas.captureStream(10); // 10 FPS
+					video.srcObject = stream;
+				}
 
+				// 媒体会话API
+				navigator.mediaSession.setActionHandler("play", () => { // 继续播放
+					_this.$refs["player"].play();
+				});
+				navigator.mediaSession.setActionHandler("pause", () => { // 暂停播放
+					_this.$refs["player"].pause();
+				});
+				navigator.mediaSession.setActionHandler("previoustrack", () => { // 上一首
+					_this.PlayPre();
+				});
+				navigator.mediaSession.setActionHandler("nexttrack", () => { // 下一首
+					_this.PlayNext();
+				});
 			}
 		});
 
