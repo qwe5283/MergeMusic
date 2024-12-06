@@ -203,7 +203,8 @@
 										@click="TogglePIP()">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
 								</v-col>
 
-								<audio style="width:100%;outline: medium;" ref="player" id="player"
+								<audio @play="TogglePlay(true)" @pause="TogglePlay(false)"
+									style="width:100%;outline: medium;" ref="player" id="player"
 									:src="nowmusic.src?nowmusic.src:''" controls="controls" autoplay="autoplay"></audio>
 
 								<v-col cols=12 class="pa-0">
@@ -607,7 +608,9 @@
 				dialog_open: false,
 				dialog_data: {},
 				clip_tmp: "",
-				onPIP: false,
+				onPIP: false, // 是否处于画中画模式
+				onPause: true, // 音乐是否暂停中
+				domTitle: "MergeMusic", // 绑定标签页标题
 				clip_dialog: false,
 				snackbar: false,
 				snackbar_msg: "",
@@ -619,7 +622,7 @@
 				platforms: [
 					{ "text": "网易云", "value": "C" },
 					{ "text": "QQ音乐", "value": "Q" },
-					{ "text": "bilibili", "value": "B" },
+					{ "text": "BiliBili (无歌词)", "value": "B" },
 				],
 				types: [
 					{ "text": "歌曲", "value": "music" },
@@ -731,7 +734,8 @@
 					}
 				},
 				UpLrc() { //歌词更新
-					if (!this.nowmusic.lrcs) return;
+					if (!this.nowmusic.lrcs || this.onPause) return; // 没歌词或暂停中不更新歌词
+
 					t = this.$refs["player"].currentTime;
 					for (i = this.nowmusic.lrcs.length - 1; i >= 0; i--) {
 						if (t >= this.nowmusic.lrcs[i][0]) {
@@ -745,6 +749,8 @@
 						this.UpCanvas(0, true);
 					}
 
+					// 标签页标题跟随歌词
+					this.domTitle = this.nowlrc;
 
 					if (!this.nowmusic.tlrcs) return;
 					t = this.$refs["player"].currentTime;
@@ -952,6 +958,17 @@
 						reader.readAsText(this.upFileInfo);
 					}
 				},
+				TogglePlay(toPlay) { // 播放暂停状态切换
+					if (toPlay) {
+						this.onPause = false;
+						console.log("播放");
+					} else {
+						this.onPause = true;
+						this.domTitle = "MergeMusic"
+						console.log("暂停");
+					}
+
+				},
 				TogglePIP() {
 					if (document.pictureInPictureElement) { // 退出画中画
 						document.exitPictureInPicture();
@@ -1036,7 +1053,11 @@
 				},
 				save_list() {
 					localStorage.setItem("save_list", JSON.parse(this.save_list));
-				}
+				},
+				domTitle(newTitle) { // 监听并设置标签页标题
+					// 忽略空串与空格串, B站源无歌词
+					document.title = newTitle.trim().length === 0 || this.nowmusic.mid.startsWith('B') ? "MergeMusic" : newTitle;
+				},
 			},
 			created() {
 				_this = this;
