@@ -265,11 +265,12 @@ def bili_get_vid(vid):  # 获取视频详情
 
 
 def bili_get_playinfo(vid):  # 获取播放链接
-    url = f"https://api.bilibili.com/x/web-interface/view?aid={vid[2:-4]}"
+    p = vid[vid.find("?p=") + 3 :]  # 获取请求的分p数
+    url = f"https://api.bilibili.com/x/web-interface/view?aid={vid[2:vid.find('?p=')]}"
     r = requests.get(url, headers=header)
     data = json.loads(r.text)["data"]
     bvid = data["bvid"]
-    cid = data["pages"][0]["cid"]
+    cid = data["pages"][int(p) - 1]["cid"]
     url = f"https://api.bilibili.com/x/player/playurl?bvid={bvid}&cid={cid}&qn=0&fnver=0&fnval=4048&fourk=1"
     r = requests.get(url, headers=header)
     return json.loads(r.text)
