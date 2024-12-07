@@ -261,7 +261,7 @@
 									<v-container>
 										<v-row>
 											<v-col class="pa-0 px-1" cols=4>
-												<v-btn outlined block @click="ClearPlayList()">清空列表</v-btn>
+												<v-btn outlined block @click="confirm_dialog=true">清空列表</v-btn>
 											</v-col>
 											<v-col class="pa-0 px-1" cols=4>
 												<v-btn outlined block @click="ChangeSaveList()">
@@ -397,6 +397,20 @@
 						<v-card-text style="display: flex;justify-content: center;">
 							<v-progress-circular indeterminate color="primary"></v-progress-circular>
 						</v-card-text>
+					</v-card>
+				</v-dialog>
+
+				<v-dialog v-model="confirm_dialog" max-width="400px">
+					<v-card>
+						<v-card-title class="headline">清空播放列表</v-card-title>
+						<v-card-text>
+							确定要继续清空吗?
+						</v-card-text>
+						<v-card-actions>
+							<v-spacer></v-spacer>
+							<v-btn color="cyan" text @click="confirm_dialog=false">取消</v-btn>
+							<v-btn color="cyan" text @click="ClearPlayList();confirm_dialog=false">确定</v-btn>
+						</v-card-actions>
 					</v-card>
 				</v-dialog>
 
@@ -688,6 +702,7 @@
 				save_list_dialog: false,
 				vip_dialog: false, // VIP提示框
 				loading_dialog: false, // 加载提示框
+				confirm_dialog: false, // 确认操作弹窗
 			},
 			methods: {
 				Search() { //搜索
