@@ -382,6 +382,15 @@
 					</v-card>
 				</v-dialog>
 
+				<v-dialog v-model="vip_dialog">
+					<v-card>
+						<v-card-title>VIP歌曲无法直接播放
+							<v-btn block color="cyan" text @click="VipDialogCallback(0)">添加到播放列表但无法播放</v-btn>
+							<v-btn block color="cyan" text @click="VipDialogCallback(1)">尝试切换平台搜索此歌曲</v-btn>
+						</v-card-title>
+					</v-card>
+				</v-dialog>
+
 				<v-snackbar v-model="snackbar">
 					{{snackbar_msg}}
 					<template v-slot:action="{attrs}">
@@ -414,7 +423,7 @@
 			},
 			template: `
 			<div>
-			<v-list-item @click="music.type=='music'?_this.PlayMusic(music.mid):GetList()" :color="music.color">
+			<v-list-item @click="ClickCallback()" :color="music.color">
 				<v-list-item-avatar>
 					<v-chip outlined :color="music.color">{{index+1}}</v-chip>
 				</v-list-item-avatar>
@@ -453,6 +462,18 @@
 			</div>
 				`,
 			methods: {
+				ClickCallback() {
+					if (this.music.type == 'music') {
+						if (this.music.vip) {
+							_this.dialog_data = this.music;
+							_this.vip_dialog = true;
+						} else {
+							_this.PlayMusic(this.music.mid);
+						}
+					} else {
+						this.GetList();
+					}
+				},
 				GetList() {
 					if (this.list.length) {
 						this.list = [];
@@ -647,6 +668,7 @@
 				auto_save: true,
 				save_list: true,
 				save_list_dialog: false,
+				vip_dialog: false, // VIP提示框
 			},
 			methods: {
 				Search() { //搜索
@@ -937,6 +959,18 @@
 						localStorage.setItem("play_list", JSON.stringify(this.play_list));
 					}
 					this.save_list_dialog = false;
+				},
+				VipDialogCallback(method) {
+					if (method == 0) {
+						this.PlayMusic(this.dialog_data.mid);
+					}
+					if (method == 1) {
+						console.log("Search");
+						this.platform = this.platforms[2].value;
+						keyword = this.dialog_data.name + this.dialog_data.artist.join(" ");
+						this.StartSearch(keyword);
+					}
+					this.vip_dialog = false;
 				},
 				Msg(msg) { //提示框
 					this.snackbar_msg = msg;
