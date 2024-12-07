@@ -382,7 +382,7 @@
 					</v-card>
 				</v-dialog>
 
-				<v-dialog v-model="vip_dialog">
+				<v-dialog v-model="vip_dialog" width="500">
 					<v-card>
 						<v-card-title>VIP歌曲无法直接播放
 							<v-btn block color="cyan" text @click="VipDialogCallback(0)">添加到播放列表但无法播放</v-btn>
@@ -425,7 +425,10 @@
 			<div>
 			<v-list-item @click="ClickCallback()" :color="music.color">
 				<v-list-item-avatar>
-					<v-chip outlined :color="music.color">{{index+1}}</v-chip>
+					<v-chip v-if="!list.length" outlined :color="music.color">{{index+1}}</v-chip>
+					<v-chip v-if="list.length" outlined :color="music.color">
+						<v-icon small>mdi-format-list-bulleted-square</v-icon>
+					</v-chip>
 				</v-list-item-avatar>
 
 				<v-list-item-content>
@@ -470,7 +473,7 @@
 						} else {
 							_this.PlayMusic(this.music.mid);
 						}
-					} else {
+					} else { // type == 'p'
 						this.GetList();
 					}
 				},
@@ -487,6 +490,15 @@
 					})
 						.then((r) => {
 							this.list = r.data;
+							// 单p视频则直接播放
+							console.log(r.data);
+							if (this.list.length == 1) {
+								console.log("单p直接播放");
+								_this.search_list[this.index].type = this.list[0].type;
+								_this.search_list[this.index].mid = this.list[0].mid;
+								_this.PlayMusic(this.music.mid);
+								this.list = []
+							}
 						});
 				},
 				OpenDialog() {
@@ -965,7 +977,6 @@
 						this.PlayMusic(this.dialog_data.mid);
 					}
 					if (method == 1) {
-						console.log("Search");
 						this.platform = this.platforms[2].value;
 						keyword = this.dialog_data.name + this.dialog_data.artist.join(" ");
 						this.StartSearch(keyword);
