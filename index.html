@@ -1070,6 +1070,16 @@
 					else {
 						this.nowmusic = {};
 					}
+
+					//MediaSessionMetaData
+					if (this.nowmusic.name && "mediaSession" in navigator) {
+						navigator.mediaSession.metadata = new MediaMetadata({
+							title: this.nowmusic.name,
+							artist: this.nowmusic.artist.join(" | "),
+							album: this.nowmusic.album.name,
+							artwork: [{ src: this.nowmusic.img }],
+						});
+					}
 				},
 				save_list() {
 					localStorage.setItem("save_list", JSON.parse(this.save_list));
@@ -1132,9 +1142,11 @@
 				// 媒体会话API
 				navigator.mediaSession.setActionHandler("play", () => { // 继续播放
 					_this.$refs["player"].play();
+					//navigator.mediaSession.playbackState = "playing";
 				});
 				navigator.mediaSession.setActionHandler("pause", () => { // 暂停播放
 					_this.$refs["player"].pause();
+					//navigator.mediaSession.playbackState = "paused";
 				});
 				navigator.mediaSession.setActionHandler("previoustrack", () => { // 上一首
 					_this.PlayPre();

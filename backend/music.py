@@ -14,7 +14,7 @@ import os
 import config
 
 header = config.header
-api_url = config.api_base_url.copy()
+api_url = config.api_base_url.copy()  # https://music.163.com/api/search/get/web
 check_tmp = config.check_tmp
 save_tmp = config.save_tmp
 
@@ -40,8 +40,8 @@ def cloud_user(mid):
 
 
 def cloud_list(mid):
-    url = api_url["C"] + "/playlist/detail?id=" + mid + "&cookie=" + config.C_vip_cookie
-    print(url)
+    url = "https://music.163.com/api/playlist/detail?id=" + mid
+    # print(url)
     r = requests.get(url)
     Ids = json.loads(r.text)
     Ids = [str(i["id"]) for i in Ids["playlist"]["trackIds"]]
