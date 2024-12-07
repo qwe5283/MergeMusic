@@ -367,6 +367,15 @@ def bili(mid, Type):
         if not img:
             img = bili_get_img(vid)
 
+        if info["title"] == info["pages"][min(p, len(info["pages"])) - 1]["part"]:
+            p_name = info["title"]
+        else:
+            p_name = (
+                info["title"]
+                + " - "
+                + info["pages"][min(p, len(info["pages"])) - 1]["part"],
+            )
+
         dic = {
             "type": "music",
             "mid": "B" + vid + "_" + str(p),
@@ -375,9 +384,7 @@ def bili(mid, Type):
             "lrc": "[00:00.00]木有歌词哦",
             "album": {"name": ""},
             "artist": [info["owner"]["name"]],
-            "name": info["title"]
-            + " - "
-            + info["pages"][min(p, len(info["pages"])) - 1]["part"],
+            "name": p_name,
         }
         return dic
     elif Type == "user":  # 用户
