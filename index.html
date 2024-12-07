@@ -391,6 +391,15 @@
 					</v-card>
 				</v-dialog>
 
+				<v-dialog v-model="loading_dialog" width="300" persistent>
+					<v-card>
+						<v-card-title style="justify-content: center;">等待响应中...</v-card-title>
+						<v-card-text style="display: flex;justify-content: center;">
+							<v-progress-circular indeterminate color="primary"></v-progress-circular>
+						</v-card-text>
+					</v-card>
+				</v-dialog>
+
 				<v-snackbar v-model="snackbar">
 					{{snackbar_msg}}
 					<template v-slot:action="{attrs}">
@@ -489,15 +498,12 @@
 						}
 					})
 						.then((r) => {
-							this.list = r.data;
-							// 单p视频则直接播放
-							console.log(r.data);
-							if (this.list.length == 1) {
-								console.log("单p直接播放");
-								_this.search_list[this.index].type = this.list[0].type;
-								_this.search_list[this.index].mid = this.list[0].mid;
+							if (Array.isArray(r.data) && r.data.length == 1) { // 单p视频则直接播放
+								_this.search_list[this.index].type = r.data[0].type;
+								_this.search_list[this.index].mid = r.data[0].mid;
 								_this.PlayMusic(this.music.mid);
-								this.list = []
+							} else { // 显示分p列表
+								this.list = r.data;
 							}
 						});
 				},
@@ -681,6 +687,7 @@
 				save_list: true,
 				save_list_dialog: false,
 				vip_dialog: false, // VIP提示框
+				loading_dialog: false, // 加载提示框
 			},
 			methods: {
 				Search() { //搜索
@@ -715,12 +722,17 @@
 					});
 				},
 				PlayMusic(mid) { //播放音乐
+					if (mid.startsWith('B')) {
+						_this.loading_dialog = true;
+					}
 					axios.get(this.apiurl + "/music/", {
 						params: {
 							mid: mid,
 							type: "music",
 						}
 					}).then((response) => {
+						this.loading_dialog = false;
+
 						let mmusic = JSON.parse(JSON.stringify(response.data));
 						this.nowmusic = response.data
 						document.querySelector("#bgimg").style.backgroundImage = "url(" + this.nowmusic.img + ")";
@@ -747,6 +759,9 @@
 						delete mmusic.lrc;
 						delete mmusic.tlrc;
 						this.AddList([mmusic], "front");
+					}).catch((error) => {
+						this.loading_dialog = false;
+						this.Msg("请求失败");
 					});
 				},
 				DecodeLrc(s) { //歌词解码
