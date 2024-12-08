@@ -31,6 +31,9 @@
 	<style>
 		video {
 			position: fixed;
+			top: 10px;
+			left: 10px;
+			z-index: -1;
 			opacity: 0;
 		}
 
@@ -144,7 +147,8 @@
 						<img v-if="showPIP()" ref="lrcBg" width="450" height="540"></img>
 						<canvas v-if="showPIP()" ref="lrcCanvas" width="450" height="540"></canvas>
 						<video v-if="showPIP()" ref="lrcVideo" muted autoplay @enterpictureinpicture="onPIP=true"
-							@leavepictureinpicture="onPIP=false"></video>
+							@leavepictureinpicture="onPIP=false" @play="TogglePlay(true)"
+							@pause="TogglePlay(false)"></video>
 						<!-- 用于选择歌单文件进行导入 -->
 						<v-file-input v-model="upFileInfo" ref="jsonFileInput" accept=".json" style="display:none;"
 							@change="ReadPlayListFromFile"></v-file-input>
@@ -746,8 +750,6 @@
 							type: "music",
 						}
 					}).then((response) => {
-						this.loading_dialog = false;
-
 						let mmusic = JSON.parse(JSON.stringify(response.data));
 						this.nowmusic = response.data
 						document.querySelector("#bgimg").style.backgroundImage = "url(" + this.nowmusic.img + ")";
@@ -774,6 +776,9 @@
 						delete mmusic.lrc;
 						delete mmusic.tlrc;
 						this.AddList([mmusic], "front");
+
+						this.loading_dialog = false;
+						this.$refs['lrcBg'].play;
 					}).catch((error) => {
 						this.loading_dialog = false;
 						this.Msg("请求失败");
@@ -1056,10 +1061,14 @@
 					}
 				},
 				TogglePlay(toPlay) { // 播放暂停状态切换
-					if (toPlay) {
+					if (toPlay) { // 切换为播放
 						this.onPause = false;
-					} else {
+						if (this.$refs["lrcVideo"].paused) this.$refs["lrcVideo"].play();
+						if (this.$refs["player"].paused) this.$refs["lrcVideo"].play();
+					} else { // 切换为暂停
 						this.onPause = true;
+						if (!this.$refs["lrcVideo"].paused) this.$refs["lrcVideo"].pause();
+						if (!this.$refs["player"].paused) this.$refs["lrcVideo"].pause();
 						this.domTitle = "MergeMusic"
 					}
 
@@ -1217,11 +1226,11 @@
 				// 媒体会话API
 				navigator.mediaSession.setActionHandler("play", () => { // 继续播放
 					_this.$refs["player"].play();
-					//navigator.mediaSession.playbackState = "playing";
+					// navigator.mediaSession.playbackState = "playing";
 				});
 				navigator.mediaSession.setActionHandler("pause", () => { // 暂停播放
 					_this.$refs["player"].pause();
-					//navigator.mediaSession.playbackState = "paused";
+					// navigator.mediaSession.playbackState = "paused";
 				});
 				navigator.mediaSession.setActionHandler("previoustrack", () => { // 上一首
 					_this.PlayPre();
