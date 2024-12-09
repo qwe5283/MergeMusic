@@ -202,9 +202,12 @@
 									<v-btn block outlined :disabled="!nowmusic.mid"
 										@click="dialog_data=nowmusic;dialog_open=true;">详情</v-btn>
 								</v-col>
-								<v-col class="pa-0 pl-1 pb-2" cols=12>
-									<v-btn block outlined :disabled="!nowmusic.mid"
-										@click="TogglePIP()">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
+								<v-col class="pa-0 pl-1 pb-2" cols=6>
+									<v-btn block outlined @click="TogglePIP()">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
+								</v-col>
+								<v-col class="pa-0 pl-1 pb-2" cols=6>
+									<v-btn block outlined :disabled="!onPIP"
+										@click="patternPIP=(patternPIP+1)%2">画中画样式：{{patternsPIP[patternPIP].text}}</v-btn>
 								</v-col>
 
 								<audio @play="TogglePlay(true)" @pause="TogglePlay(false)"
@@ -666,6 +669,11 @@
 				dialog_data: {},
 				clip_tmp: "",
 				onPIP: false, // 是否处于画中画模式
+				patternPIP: 0,
+				patternsPIP: [
+					{ "text": "经典", "value": "0" },
+					{ "text": "聚焦", "value": "1" }
+				], // 画中画样式
 				onPause: true, // 音乐是否暂停中
 				domTitle: "MergeMusic", // 绑定标签页标题
 				preMusic: null, // 记录上一首音乐
@@ -1102,35 +1110,72 @@
 					const ctx = canvas.getContext('2d');
 					const h = canvas.height;
 					const w = canvas.width;
-					const line_height = 45;
 					// 清空画布
 					ctx.clearRect(0, 0, w, h);
 
-					// 字体对齐方式
-					ctx.textAlign = 'center';
-					ctx.textBaseline = 'middle';
+					if (this.patternPIP == 1) { // 聚焦样式
+						const line_height = 25;
+						ctx.textBaseline = 'middle';
 
-					// 绘制背景
-					ctx.filter = "blur(12px) brightness(50%)";
-					const img = this.$refs['lrcBg'];
-					ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
+						// 绘制背景
+						ctx.filter = "blur(12px) brightness(50%)";
+						const img = this.$refs['lrcBg'];
+						ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
 
-					// 绘制歌名
-					ctx.filter = "blur(0px) brightness(100%)";
-					ctx.font = 'bold 30px "Microsoft YaHei"';
-					ctx.fillStyle = "white";
-					ctx.fillText(this.nowmusic.name, w / 2, 60);
-
-					// 绘制歌词
-					ctx.font = '24px "Microsoft YaHei"';
-					for (i = currentIndex - 3, y = (h / 2) - (3 * line_height); i < currentIndex + 5; i++) {
-						if (i < 0 || i > this.nowmusic.lrcs.length - 1) {
-							y += line_height;
-							continue;
+						if (currentIndex % 2) { // 首行高亮
+							currentIndex--;
+							nowOnFirst = false;
+						} else {
+							nowOnFirst = true;
 						}
-						ctx.fillStyle = !isEmpty && i == currentIndex ? "white" : "grey";
-						ctx.fillText(this.nowmusic.lrcs[i][1], w / 2, Number(y));
-						y += line_height;
+
+						// 绘制第一行歌词
+						ctx.filter = "blur(0px) brightness(100%)";
+						ctx.font = '45px "Microsoft YaHei"';
+						ctx.textAlign = 'left';
+						ctx.fillStyle = nowOnFirst && !isEmpty ? "white" : "grey";
+						x = 30;
+						y = h * 0.3;
+						if (this.nowmusic.lrcs[nowOnFirst ? currentIndex : currentIndex + 2])
+							ctx.fillText(this.nowmusic.lrcs[nowOnFirst ? currentIndex : currentIndex + 2][1], x, y);
+
+						// 绘制第二行歌词
+						ctx.textAlign = 'right';
+						ctx.fillStyle = nowOnFirst ? "grey" : "white";
+						x = w - 30;
+						y = h * 0.7;
+						if (this.nowmusic.lrcs[currentIndex + 1])
+							ctx.fillText(this.nowmusic.lrcs[currentIndex + 1][1], x, y);
+
+					} else { // 经典样式
+						const line_height = 45;
+
+						// 字体对齐方式
+						ctx.textAlign = 'center';
+						ctx.textBaseline = 'middle';
+
+						// 绘制背景
+						ctx.filter = "blur(12px) brightness(50%)";
+						const img = this.$refs['lrcBg'];
+						ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
+
+						// 绘制歌名
+						ctx.filter = "blur(0px) brightness(100%)";
+						ctx.font = 'bold 30px "Microsoft YaHei"';
+						ctx.fillStyle = "white";
+						ctx.fillText(this.nowmusic.name, w / 2, 60);
+
+						// 绘制歌词
+						ctx.font = '24px "Microsoft YaHei"';
+						for (i = currentIndex - 3, y = (h / 2) - (3 * line_height); i < currentIndex + 5; i++) {
+							if (i < 0 || i > this.nowmusic.lrcs.length - 1) {
+								y += line_height;
+								continue;
+							}
+							ctx.fillStyle = !isEmpty && i == currentIndex ? "white" : "grey";
+							ctx.fillText(this.nowmusic.lrcs[i][1], w / 2, Number(y));
+							y += line_height;
+						}
 					}
 				},
 			},
@@ -1178,6 +1223,24 @@
 					// 忽略空串与空格串
 					document.title = newTitle.trim().length === 0 || newTitle === "木有歌词哦" ? "MergeMusic" : newTitle;
 				},
+				patternPIP(newPattern) {
+					const canvas = this.$refs['lrcCanvas'];
+					const video = this.$refs['lrcVideo'];
+					if (newPattern == 1) { // 切换为聚焦画中画
+						canvas.height = 200;
+						canvas.width = 800;
+					} else { // 切换为经典画中画
+						canvas.height = 540;
+						canvas.width = 450;
+					}
+				},
+				onPIP(flag) {
+					if (flag) {
+						_this.$refs["lrcVideo"].play();
+					} else {
+						_this.$refs["lrcVideo"].pause();
+					}
+				}
 			},
 			created() {
 				_this = this;
