@@ -778,7 +778,13 @@
 						this.AddList([mmusic], "front");
 
 						this.loading_dialog = false;
-						this.$refs['lrcBg'].play;
+
+						if (navigator.userAgent.includes("EdgA")) { // 解决Android Edge切换下一首时无法自动播放
+							setTimeout(() => {
+								const player = _this.$refs['player'];
+								if (player.paused) player.play();
+							}, 500);
+						}
 					}).catch((error) => {
 						this.loading_dialog = false;
 						this.Msg("请求失败");
