@@ -12,6 +12,7 @@ import json
 import time
 import os
 import config
+from flask import abort
 
 header = config.header
 api_url = config.api_base_url.copy()  # https://music.163.com/api/search/get/web
@@ -41,31 +42,32 @@ def cloud_user(mid):
 
 def cloud_list(mid):
     url = "https://music.163.com/api/playlist/detail?id=" + mid
-    # print(url)
+    print(url)
     r = requests.get(url)
-    Ids = json.loads(r.text)
-    Ids = [str(i["id"]) for i in Ids["playlist"]["trackIds"]]
-
-    data = {"ids": ",".join(Ids)}
-    url = (
-        api_url["C"]
-        + "/song/detail?br=320000&t="
-        + str(time.time())
-        + "&cookie="
-        + config.C_vip_cookie
-    )
-    r = requests.post(url, data=data)
-    dic = json.loads(r.text)["songs"]
-
-    for ind, i in enumerate(dic):
+    dic = json.loads(r.text)
+    result_list = []
+    if dic["code"] == -447:  # 服务器忙碌，请稍后再试
+        # return abort(400, dic["msg"])
         x = {}
-        x["type"] = "music"
-        x["mid"] = "C" + str(i["id"])
-        x["name"] = i["name"]
-        x["artist"] = [j["name"] for j in i["ar"]]
-        x["album"] = {"name": i["al"]["name"]}
-        dic[ind] = x
-    return dic
+        x["type"] = "msg"
+        x["mid"] = "0"
+        x["name"] = dic["msg"]
+        x["artist"] = []
+        x["album"] = {"name": "网易云被玩坏了,这不是MergeMusic的问题,绝对不是(；´д｀)"}
+        result_list.append(x)
+    else:  # code 200
+        raw_list = dic["result"]["tracks"]
+
+        for ind, i in enumerate(raw_list):  # ind索引 i对象
+            x = {}
+            x["type"] = "music"
+            x["mid"] = "C" + str(i["id"])
+            x["name"] = i["name"]
+            x["artist"] = [j["name"] for j in i["artists"]]
+            x["album"] = {"name": i["album"]["name"]}
+            result_list.append(x)
+
+    return result_list
 
 
 def cloud_music(mid):
@@ -455,5 +457,7 @@ def main(dic):
         if mid[0].isdigit():
             mid = "av" + mid
         res = bili(mid, Type)
+    else:
+        return abort(400, "Invalid Params")
 
     return json.dumps(res, ensure_ascii=False)
