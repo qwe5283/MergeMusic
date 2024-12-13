@@ -1134,9 +1134,13 @@
 						ctx.textBaseline = 'middle';
 
 						// 绘制背景
-						ctx.filter = "blur(12px) brightness(50%)";
+						ctx.filter = "blur(12px) brightness(40%)";
 						const img = this.$refs['lrcBg'];
 						ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
+						// 调色
+						ctx.fillStyle = "rgb(222,230,240)";
+						ctx.filter = "opacity(20%)";
+						ctx.fillRect(0, 0, w, h);
 
 						if (currentIndex % 2) { // 首行高亮
 							currentIndex--;
@@ -1146,10 +1150,11 @@
 						}
 
 						// 绘制第一行歌词
+						ctx.fillStyle = "white";
 						ctx.filter = "blur(0px) brightness(100%)";
 						ctx.font = '45px "Microsoft YaHei"';
 						ctx.textAlign = 'left';
-						ctx.fillStyle = nowOnFirst && !isEmpty ? "white" : "grey";
+						ctx.filter = nowOnFirst && !isEmpty ? "brightness(100%)" : "brightness(60%)";
 						x = 30;
 						y = h * 0.3;
 						if (this.nowmusic.lrcs[nowOnFirst ? currentIndex : currentIndex + 2])
@@ -1157,7 +1162,7 @@
 
 						// 绘制第二行歌词
 						ctx.textAlign = 'right';
-						ctx.fillStyle = nowOnFirst ? "grey" : "white";
+						ctx.filter = nowOnFirst ? "brightness(60%)" : "brightness(100%)";
 						x = w - 30;
 						y = h * 0.7;
 						if (this.nowmusic.lrcs[currentIndex + 1])
@@ -1171,9 +1176,13 @@
 						ctx.textBaseline = 'middle';
 
 						// 绘制背景
-						ctx.filter = "blur(12px) brightness(50%)";
+						ctx.filter = "blur(12px) brightness(40%)";
 						const img = this.$refs['lrcBg'];
 						ctx.drawImage(img, -15, -15, canvas.width + 30, canvas.height + 30);// 裁剪模糊效果导致的黑边
+						// 调色
+						ctx.fillStyle = "rgb(111,115,120)";
+						ctx.filter = "opacity(20%) brightness(130%)";
+						ctx.fillRect(0, 0, w, h);
 
 						// 绘制歌名
 						ctx.filter = "blur(0px) brightness(100%)";
@@ -1188,7 +1197,7 @@
 								y += line_height;
 								continue;
 							}
-							ctx.fillStyle = !isEmpty && i == currentIndex ? "white" : "grey";
+							ctx.filter = !isEmpty && i == currentIndex ? "brightness(100%)" : "brightness(60%)"
 							ctx.fillText(this.nowmusic.lrcs[i][1], w / 2, Number(y));
 							y += line_height;
 						}
