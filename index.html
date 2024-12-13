@@ -239,10 +239,13 @@
 								<v-tab-item key="search">
 									<v-container>
 										<v-row>
-											<v-col class="pa-0 px-1" cols=6>
+											<v-col class="pa-0 px-1" cols=4>
+												<v-btn outlined block @click="Discover('hot')">推荐歌单</v-btn>
+											</v-col>
+											<v-col class="pa-0 px-1" cols=4>
 												<v-btn outlined block @click="AddAll('replace')">播放全部</v-btn>
 											</v-col>
-											<v-col class="pa-0 px-1" cols=6>
+											<v-col class="pa-0 px-1" cols=4>
 												<v-btn outlined block @click="AddAll('back')">添加全部</v-btn>
 											</v-col>
 										</v-row>
@@ -519,7 +522,7 @@
 						}
 					})
 						.then((r) => {
-							if (Array.isArray(r.data) && r.data.length == 1) { // 单p视频则直接播放
+							if (Array.isArray(r.data) && r.data.length == 1 && r.data[0].type == 'music') { // 单p视频则直接播放
 								_this.search_list[this.index].type = r.data[0].type;
 								_this.search_list[this.index].mid = r.data[0].mid;
 								_this.PlayMusic(this.music.mid);
@@ -747,6 +750,19 @@
 						this.off++;
 						this.searching = false;
 					});
+				},
+				Discover(type) { // 获取推荐内容
+					if (type == 'hot') {
+						this.search_list = [];
+						this.search_list.unshift({
+							album: { 'name': '网易云热歌榜' },
+							artist: ['网易云音乐'],
+							color: _this.colors['C'],
+							mid: 'C3778678',
+							name: '网易云热歌榜',
+							type: 'list'
+						});
+					}
 				},
 				PlayMusic(mid) { //播放音乐
 					if (mid.startsWith('B')) {

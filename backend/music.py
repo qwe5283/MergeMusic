@@ -54,7 +54,16 @@ def cloud_list(mid):
         x["name"] = dic["msg"]
         x["artist"] = []
         x["album"] = {"name": "网易云被玩坏了,这不是MergeMusic的问题,绝对不是(；´д｀)"}
+        x["vip"] = False
         result_list.append(x)
+        y = {}
+        y["type"] = "msg"
+        y["mid"] = "0"
+        y["name"] = "尝试收起并重新展开列表可能解决问题"
+        y["artist"] = []
+        y["album"] = {"name": "提示"}
+        y["vip"] = False
+        result_list.append(y)
     else:  # code 200
         raw_list = dic["result"]["tracks"]
 
@@ -65,6 +74,7 @@ def cloud_list(mid):
             x["name"] = i["name"]
             x["artist"] = [j["name"] for j in i["artists"]]
             x["album"] = {"name": i["album"]["name"]}
+            x["vip"] = True if i["fee"] == 1 else False
             result_list.append(x)
 
     return result_list
