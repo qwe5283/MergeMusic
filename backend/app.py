@@ -38,6 +38,9 @@ def server_api(api):
             return jsonify("accept")
         else:
             return jsonify("denied")
+    elif api == "update":
+
+        return jsonify("accept")
 
 
 @app.route("/")

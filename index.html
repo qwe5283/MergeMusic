@@ -147,8 +147,8 @@
 						<img v-if="showPIP()" ref="lrcBg" width="450" height="540"></img>
 						<canvas v-if="showPIP()" ref="lrcCanvas" width="450" height="540"></canvas>
 						<video v-if="showPIP()" ref="lrcVideo" muted autoplay @enterpictureinpicture="onPIP=true"
-							@leavepictureinpicture="onPIP=false" @play="TogglePlay(true)"
-							@pause="TogglePlay(false)"></video>
+							@leavepictureinpicture="onPIP=false" @play="TogglePlay(true, true)"
+							@pause="TogglePlay(false, true)"></video>
 						<!-- 用于选择歌单文件进行导入 -->
 						<v-file-input v-model="upFileInfo" ref="jsonFileInput" accept=".json" style="display:none;"
 							@change="ReadPlayListFromFile"></v-file-input>
@@ -169,7 +169,7 @@
 							<!-- <p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;">{{hitokoto}}</p> -->
 							<!-- 服务器运行状态 -->
 							<p class="blue-grey--text text--darken-2 mx-2 mb-0" style="text-align: center;"
-								@dblclick="shutdown">
+								@dblclick="ServerAPI">
 								{{serverinfo}}</p>
 
 							<v-row class="ma-2" justify="center">
@@ -202,12 +202,17 @@
 									<v-btn block outlined :disabled="!nowmusic.mid"
 										@click="dialog_data=nowmusic;dialog_open=true;">详情</v-btn>
 								</v-col>
-								<v-col class="pa-0 pl-1 pb-2" cols=6>
-									<v-btn block outlined @click="TogglePIP()">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
+								<v-col class="pa-0 pr-1 pb-2" cols=6>
+									<v-btn block outlined @click="TogglePIP">歌词画中画：{{onPIP?"开":"关"}}</v-btn>
 								</v-col>
 								<v-col class="pa-0 pl-1 pb-2" cols=6>
 									<v-btn block outlined :disabled="!onPIP"
 										@click="patternPIP=(patternPIP+1)%2">画中画样式：{{patternsPIP[patternPIP].text}}</v-btn>
+								</v-col>
+								<v-col class="pa-0 pr-1 pb-2" cols=12>
+									<v-btn block outlined @click="ListenAlongBtnCallback()">
+										{{along.connected ?"正在一起听歌":"一起听歌"}}
+									</v-btn>
 								</v-col>
 
 								<audio @play="TogglePlay(true)" @pause="TogglePlay(false)"
@@ -421,6 +426,57 @@
 							<v-btn color="cyan" text @click="confirm_dialog=false">取消</v-btn>
 							<v-btn color="cyan" text @click="ClearPlayList();confirm_dialog=false">确定</v-btn>
 						</v-card-actions>
+					</v-card>
+				</v-dialog>
+				<!-- 一起听入口 -->
+				<v-dialog v-model="along.entry_dialog" max-width="300px">
+					<v-card>
+						<v-card-title>你想如何一起听
+							<v-btn class="mt-4" block color="cyan" text
+								@click="along.entry_dialog = false;along.host_dialog = true">发起邀请</v-btn>
+							<v-btn block color="cyan" text
+								@click="along.entry_dialog = false;along.client_dialog = true">接受邀请</v-btn>
+						</v-card-title>
+					</v-card>
+				</v-dialog>
+				<!-- 一起听host面板 -->
+				<v-dialog v-model="along.host_dialog" max-width="500px" persistent>
+					<v-card>
+						<v-container>
+							<v-card-title>你的邀请码为:</v-card-title>
+							<v-card-text style="display: flex;justify-content: center;font-size: xx-large;">
+								<p>{{along.sid}}</p>
+							</v-card-text>
+							<v-card-title>正在等待接受邀请中...</v-card-title>
+							<v-btn block color="cyan" text v-clipboard:copy="along.sid"
+								v-clipboard:success="ClipSuccess" v-clipboard:error="">复制邀请码</v-btn>
+							<v-btn block color="cyan" text @click="along.host_dialog = false">取消邀请</v-btn>
+						</v-container>
+					</v-card>
+				</v-dialog>
+				<!-- 一起听client面板 -->
+				<v-dialog v-model="along.client_dialog" max-width="500px" persistent>
+					<v-card>
+						<v-container>
+							<v-card-title>输入邀请码:</v-card-title>
+							<v-text-field class="mx-6 mb-8" outlined dense hide-details color="cyan" label="邀请码"
+								v-model="along.sid" append-icon="mdi-arrow-right" @click:append="ListenAlongJoin()"
+								@keyup.13="ListenAlongJoin()">
+							</v-text-field>
+							<v-btn block color="cyan" text @click="along.sid='';along.client_dialog = false">取消</v-btn>
+						</v-container>
+					</v-card>
+				</v-dialog>
+				<!-- 一起听main面板 -->
+				<v-dialog v-model="along.main_dialog" max-width="500px">
+					<v-card>
+						<v-container>
+							<v-card-text style="display: flex;justify-content: center;font-size: xx-large;">
+								<p>正在一起听歌</p>
+							</v-card-text>
+							<v-btn block color="cyan" text @click="along.main_dialog = false">隐藏面板</v-btn>
+							<v-btn block color="cyan" text @click="ListenAlongDisconnect()">断开连接</v-btn>
+						</v-container>
 					</v-card>
 				</v-dialog>
 
@@ -718,6 +774,17 @@
 				vip_dialog: false, // VIP提示框
 				loading_dialog: false, // 加载提示框
 				confirm_dialog: false, // 确认操作弹窗
+				along: {
+					entry_dialog: false,
+					host_dialog: false,
+					client_dialog: false,
+					main_dialog: false,
+					sid: "",
+					is_host: false,
+					connected: false, // 双方都在线
+					session: null,
+					trigger_remote: false,
+				}
 			},
 			methods: {
 				Search() { //搜索
@@ -813,6 +880,21 @@
 						this.loading_dialog = false;
 						this.Msg("请求失败");
 					});
+
+					//一起听同步播放歌曲
+					if (this.along.connected && !_this.along.trigger_remote) {
+						obj = {
+							action: "play_music",
+							params: {
+								host_referer: this.along.is_host,
+								mid: mid,
+							}
+						}
+						this.along.session.send(JSON.stringify(obj))
+					}
+					_this.along.trigger_remote = false;
+					console.log("解除");
+
 				},
 				DecodeLrc(s) { //歌词解码
 					l = s.split("\n");
@@ -941,6 +1023,8 @@
 						})
 				},
 				AddMusic(music, type) { //添加歌曲或歌单到播放列表
+					console.log("同步添加歌曲", music);
+
 					if (music.type == "music") this.AddList([music], type);
 					else { //如果是歌单什么的就要先获取歌曲列表（解包）
 						axios.get(this.apiurl + "/music/", {
@@ -992,9 +1076,15 @@
 							this.hitokoto = res.data.hitokoto + "  ——" + res.data.from;
 						})
 				},
-				shutdown() {
-					passwd = prompt("use password to continue:");
-					if (passwd) {
+				ServerAPI() {
+					command = prompt("1) Shutdown MergeMusic Service\n2) Pull From Github And Update\n3) Display User-Agent Info");
+					if (!command) return;
+
+					passwd = prompt("Password:");
+
+					if (command == 1) {
+						if (!passwd) return;
+
 						axios.get(this.apiurl + "/server_api/shutdown", {
 							params: {
 								passwd: passwd
@@ -1002,6 +1092,10 @@
 						}).then((r) => {
 							alert(r.data);
 						})
+					} else if (command == 2) {
+
+					} else if (command == 3) {
+						alert(navigator.userAgent);
 					}
 				},
 				UpServerInfo() {
@@ -1090,7 +1184,7 @@
 						reader.readAsText(this.upFileInfo);
 					}
 				},
-				TogglePlay(toPlay) { // 播放暂停状态切换
+				TogglePlay(toPlay, noSync) { // 播放暂停状态切换(覆盖TogglePIP导致的视频自动播放/暂停)
 					if (toPlay) { // 切换为播放
 						this.onPause = false;
 						if (this.$refs["lrcVideo"].paused) this.$refs["lrcVideo"].play();
@@ -1101,6 +1195,20 @@
 						if (!this.$refs["player"].paused) this.$refs["lrcVideo"].pause();
 						this.domTitle = "MergeMusic"
 					}
+
+					//一起听同步暂停状态
+					if (_this.along.connected && !_this.along.trigger_remote && !noSync) {
+						obj = {
+							action: "toggle_play",
+							params: {
+								host_referer: _this.along.is_host,
+								type: _this.onPause ? "pause" : "play",
+								time: _this.$refs["player"].currentTime,
+							}
+						}
+						_this.along.session.send(JSON.stringify(obj))
+					}
+					_this.along.trigger_remote = false;
 
 				},
 				TogglePIP() {
@@ -1203,6 +1311,107 @@
 						}
 					}
 				},
+				ListenAlongBtnCallback() {
+					if (this.along.connected) {
+						this.along.main_dialog = true
+					} else {
+						this.along.entry_dialog = true
+					}
+				},
+				ListenAlongDisconnect() {
+					ws = this.along.session;
+					if (ws) {
+						if (ws.readyState === WebSocket.OPEN) {
+							ws.close(1000, 'Close');
+						}
+					}
+					this.along.main_dialog = false;
+				},
+				ListenAlongMessageCallback(event) {
+					console.log("接收到数据", event.data);
+					data = JSON.parse(event.data);
+
+					if (data.action == "init_id") {//初始化邀请码
+						_this.along.sid = data.params;
+					} else if (data.action == "key_err") {//邀请码无效
+						if (data.params == "occupied")
+							_this.Msg("邀请码已被使用");
+						else if (data.params == "error")
+							_this.Msg("邀请码无效");
+					} else if (data.action == "online_stat") {//对方在线状态
+						_this.along.connected = data.params;
+					} else if (data.action == "msg") {//发送消息
+
+					} else if (data.action == "add_music") {
+						// if (data.params.host_referer != _this.along.is_host) {
+						// 	console.log("接受到音乐添加请求");
+						// 	_this.AddMusic(data.params.music, data.params.type);
+						// 	_this.Msg("接收到对方添加的歌曲");
+						// }
+					} else if (data.action == "play_music") {//播放音乐
+						if (data.params.host_referer != _this.along.is_host) {
+							console.log("接受到音乐播放请求");
+							_this.along.trigger_remote = true;
+							_this.PlayMusic(data.params.mid);
+							_this.Msg("接收到对方播放的歌曲");
+						} else {
+							console.log("忽略自己发起的请求");
+						}
+					} else if (data.action == "toggle_play") {//播放状态
+						if (data.params.host_referer != _this.along.is_host) {
+							_this.along.trigger_remote = true;
+							if (data.params.type == "pause") {//暂停
+								_this.$refs["player"].pause();
+								_this.Msg("对方暂停了歌曲");
+							} else if (data.params.type == "play") {//播放(调整进度)
+								if (Math.abs(_this.$refs["player"].currentTime - data.params.time) > 0.5) {
+									_this.$refs["player"].currentTime = data.params.time;
+									_this.Msg("同步了播放进度");
+								} else {
+									_this.Msg("对方恢复了暂停状态");
+								}
+								_this.$refs["player"].play();
+							}
+						} else {
+							console.log("忽略自己发起的请求");
+						}
+					}
+				},
+				ListenAlongCloseCallback() {
+					console.log("连接被关闭");
+					_this.along.session = null;
+					_this.along.sid = "";
+					if (_this.along.connected) {
+						_this.along.connected = false;
+						_this.Msg("一起听已结束");
+					}
+				},
+				ListenAlongJoin() {
+					//校验输入
+					input_value = parseInt(this.along.sid);
+					if (isNaN(input_value)) {
+						_this.Msg("请输入4位数邀请码");
+						return;
+					} else if (input_value < 1000 || input_value > 9999) {
+						_this.Msg("请输入4位数邀请码");
+						return;
+					}
+
+					console.log("Connect to " + this.along.sid);
+					//作为client连接
+					this.along.is_host = false;
+					this.along.session = new WebSocket("ws://" + document.domain + ":9001/client/" + this.along.sid);
+
+					this.along.session.onerror = function (error) {
+						console.error('WebSocket error:', error);
+						_this.Msg("出错啦QwQ");
+						_this.along.session = null;
+					};
+
+					this.along.session.onmessage = this.ListenAlongMessageCallback;
+					this.along.session.onclose = this.ListenAlongCloseCallback;
+
+				},
 			},
 			watch: {
 				play_list() {
@@ -1265,7 +1474,59 @@
 					} else {
 						_this.$refs["lrcVideo"].pause();
 					}
-				}
+				},
+				// 一起听
+				'along.host_dialog'(flag) {
+					if (flag) {
+						//打开一起听host面板，自动连接socket
+						this.along.is_host = true;
+						if (this.along.session != null) return;
+
+						this.along.session = new WebSocket("ws://" + document.domain + ":9001/host");
+
+						this.along.session.onerror = function (error) {
+							console.error('WebSocket error:', error);
+							_this.Msg("出错啦QwQ");
+							_this.along.session = null;
+						};
+
+						this.along.session.onopen = function () {
+							//_this.along.connected = true;
+						};
+
+						this.along.session.onmessage = this.ListenAlongMessageCallback;
+						this.along.session.onclose = this.ListenAlongCloseCallback;
+
+					} else if (!this.along.connected) {//取消邀请
+						console.log("host面板关闭");
+						//关闭面板
+						ws = this.along.session;
+						if (ws) {
+							if (ws.readyState === WebSocket.OPEN) {
+								ws.close(1000, 'Close');
+							}
+						}
+					}
+				},
+				'along.connected'(flag) {
+					if (flag) {
+						if (_this.along.is_host) {
+							console.log("对方client已经连接");
+							_this.along.host_dialog = false;
+							_this.Msg("邀请成功");
+						} else {
+							console.log("对方host已经连接");
+							_this.along.client_dialog = false;
+							_this.Msg("加入成功");
+						}
+					} else {
+						if (_this.along.is_host && _this.along.session) {
+							console.log("对方已离开一起听");
+							_this.along.host_dialog = true;
+							_this.Msg("对方已离开一起听歌");
+						}
+					}
+				},
 			},
 			created() {
 				_this = this;
