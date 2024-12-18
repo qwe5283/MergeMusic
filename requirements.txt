@@ -3,3 +3,4 @@ flask
 flask_cors
 psutil
 flask_socketio
+websockets==12.0

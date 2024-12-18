@@ -129,7 +129,16 @@ async def handler(websocket, path):
         await websocket.close()
 
 
-start_server = websockets.serve(handler, None, 9001)
+# start_server = websockets.serve(handler, None, 9001)
+#
+# asyncio.get_event_loop().run_until_complete(start_server)
+# asyncio.get_event_loop().run_forever()
 
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+
+async def main():
+    async with websockets.serve(handler, None, 9001):
+        await asyncio.Future()  # Run forever
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
