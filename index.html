@@ -133,6 +133,32 @@
 			color: #fff;
 			background: #00bcd4;
 		}
+
+		.that_msg_card::before {
+			content: '';
+			position: absolute;
+			top: 10px;
+			right: 100%;
+			border-width: 10px;
+			border-style: solid;
+			border-color: transparent #EEEEEE transparent transparent;
+		}
+
+		.this_msg_card {
+			position: relative;
+			right: 10px;
+		}
+
+		.this_msg_card::before {
+			content: '';
+			position: absolute;
+			top: 10px;
+			left: 100%;
+			rotate: 180deg;
+			border-width: 10px;
+			border-style: solid;
+			border-color: transparent #1976D2 transparent transparent;
+		}
 	</style>
 </head>
 
@@ -211,7 +237,7 @@
 								</v-col>
 								<v-col class="pa-0 pr-1 pb-2" cols=12>
 									<v-btn block outlined @click="ListenAlongBtnCallback()">
-										{{along.connected ?"正在一起听歌":"一起听歌"}}
+										{{ListenAlongBtnLabel}}
 									</v-btn>
 								</v-col>
 
@@ -468,14 +494,23 @@
 					</v-card>
 				</v-dialog>
 				<!-- 一起听main面板 -->
-				<v-dialog v-model="along.main_dialog" max-width="500px">
+				<v-dialog v-model="along.main_dialog">
 					<v-card>
 						<v-container>
-							<v-card-text style="display: flex;justify-content: center;font-size: xx-large;">
+							<v-card-text style="display: flex;justify-content: center;font-size: x-large;">
 								<p>正在一起听歌</p>
 							</v-card-text>
-							<v-btn block color="cyan" text @click="along.main_dialog = false">隐藏面板</v-btn>
-							<v-btn block color="cyan" text @click="ListenAlongDisconnect()">断开连接</v-btn>
+							<v-container ref="chatContainer"
+								style="background-color: #fff;max-height: 300px; overflow-y: auto;" max-width="500px">
+								<chat_message_item v-for="(item,index) in along.chat_list" :key="index"
+									:role="item.role" :content="item.content"></chat_message_item>
+							</v-container>
+							<v-text-field class="mt-4" outlined dense hide-details color="cyan" label="聊天"
+								v-model="along.chat_input" append-icon="mdi-send" @click:append="ListenAlongSendMessage"
+								@keyup.13="ListenAlongSendMessage">
+							</v-text-field>
+							<v-btn block class="mt-4" color="cyan" text @click="along.main_dialog = false">隐藏面板</v-btn>
+							<v-btn block color="cyan" text @click="ListenAlongDisconnect()">离开一起听</v-btn>
 						</v-container>
 					</v-card>
 				</v-dialog>
@@ -699,6 +734,47 @@
 			}
 		});
 
+		//消息气泡组件
+		Vue.component("chat_message_item", {
+			props: ["role", "content"],
+			template: `<v-row :class="">
+					<v-col v-if="sys_msg" cols="auto" :class="col_align" 
+					style="background-color: #eee; border-radius: 12px; padding: 6px 12px; font-size: small; max-width:400px">
+						{{content}}
+					</v-col>
+					<v-col v-if="!sys_msg" cols="auto" :class="col_align">
+						<v-card :class="card_class" :color="bg_color" :dark="font_color">
+						{{content}}
+						</v-card>
+					</v-col>
+				</v-row>`,
+			computed: {
+				card_class() {
+					return this.role === "this" ? "pa-2 message-bubble this_msg_card" : "pa-2 message-bubble that_msg_card";
+				},
+				sys_msg() {
+					return this.role === 'system';
+				},
+				font_color() {
+					return this.role === "this" ? true : false;
+				},
+				row_style() {
+					return this.role === "this" ? "mb-4" : "";
+				},
+				col_align() {
+					if (this.role === "this")
+						return "ml-auto";
+					else if (this.role === "system")
+						return "mx-auto my-2";
+					else
+						return "";
+				},
+				bg_color() {
+					return this.role === "this" ? "primary" : "grey lighten-3";
+				}
+			},
+		});
+
 		var vm = new Vue({ //主应用
 			vuetify: new Vuetify(),
 			el: "#app",
@@ -784,6 +860,9 @@
 					connected: false, // 双方都在线
 					session: null,
 					trigger_remote: false,
+					chat_input: "",
+					chat_unread: 0,
+					chat_list: [],
 				}
 			},
 			methods: {
@@ -832,10 +911,12 @@
 					}
 				},
 				PlayMusic(mid) { //播放音乐
+					let remote = this.along.trigger_remote;
 					if (mid.startsWith('B')) {
 						_this.loading_dialog = true;
 					}
 					axios.get(this.apiurl + "/music/", {
+						timeout: 15000,
 						params: {
 							mid: mid,
 							type: "music",
@@ -876,13 +957,28 @@
 								if (player.paused) player.play();
 							}, 500);
 						}
+
+						//一起听同步消息反馈
+						if (_this.along.connected && remote) {
+							_this.along.chat_list.push({
+								role: "system",
+								content: "TA为你播放了 " + response.data.name,
+								time: Date.now(),
+							});
+						} else if (_this.along.connected) {
+							_this.along.chat_list.push({
+								role: "system",
+								content: "你为TA播放了 " + response.data.name,
+								time: Date.now(),
+							});
+						}
 					}).catch((error) => {
 						this.loading_dialog = false;
 						this.Msg("请求失败");
 					});
 
-					//一起听同步播放歌曲
-					if (this.along.connected && !_this.along.trigger_remote) {
+					//向对方的一起听同步播放歌曲
+					if (this.along.connected && !this.along.trigger_remote) {
 						obj = {
 							action: "play_music",
 							params: {
@@ -893,7 +989,6 @@
 						this.along.session.send(JSON.stringify(obj))
 					}
 					_this.along.trigger_remote = false;
-					console.log("解除");
 
 				},
 				DecodeLrc(s) { //歌词解码
@@ -965,6 +1060,9 @@
 				},
 				PlayNext() { //下一首
 					au = this.$refs['player'];
+					if (this.along.connected && !this.along.is_host) {//一起听被邀方无法下一首
+						return;
+					}
 					this.preMusic = this.play_list[0];//记录上一首
 					if (this.looptype == 0) { //顺序
 						if (this.play_list.length) {
@@ -1313,7 +1411,17 @@
 				},
 				ListenAlongBtnCallback() {
 					if (this.along.connected) {
+						//打开面板
 						this.along.main_dialog = true
+						//滚动聊天页面到底部
+						container = this.$refs["chatContainer"]
+						this.$nextTick(() => {
+							if (container) {
+								container.scrollTop = container.scrollHeight;
+							}
+						});
+						//清空未读消息数
+						this.along.chat_unread = 0;
 					} else {
 						this.along.entry_dialog = true
 					}
@@ -1340,22 +1448,21 @@
 							_this.Msg("邀请码无效");
 					} else if (data.action == "online_stat") {//对方在线状态
 						_this.along.connected = data.params;
-					} else if (data.action == "msg") {//发送消息
-
-					} else if (data.action == "add_music") {
-						// if (data.params.host_referer != _this.along.is_host) {
-						// 	console.log("接受到音乐添加请求");
-						// 	_this.AddMusic(data.params.music, data.params.type);
-						// 	_this.Msg("接收到对方添加的歌曲");
-						// }
+					} else if (data.action == "chat_msg") {//接收聊天消息
+						_this.along.chat_list.push({
+							role: "that",
+							content: data.params.content,
+							time: data.params.time,
+						});
+						//更新未读消息数
+						if (!_this.along.main_dialog) {
+							_this.along.chat_unread++;
+						}
 					} else if (data.action == "play_music") {//播放音乐
 						if (data.params.host_referer != _this.along.is_host) {
-							console.log("接受到音乐播放请求");
 							_this.along.trigger_remote = true;
 							_this.PlayMusic(data.params.mid);
 							_this.Msg("接收到对方播放的歌曲");
-						} else {
-							console.log("忽略自己发起的请求");
 						}
 					} else if (data.action == "toggle_play") {//播放状态
 						if (data.params.host_referer != _this.along.is_host) {
@@ -1377,13 +1484,37 @@
 						}
 					}
 				},
-				ListenAlongCloseCallback() {
-					console.log("连接被关闭");
+				ListenAlongCloseCallback() {//邀请方先结束一起听,被邀方执行清理
 					_this.along.session = null;
 					_this.along.sid = "";
+					_this.along.chat_input = "";
+					_this.along.chat_list = [];
+					_this.along.chat_unread = 0;
 					if (_this.along.connected) {
 						_this.along.connected = false;
+					} else {
 						_this.Msg("一起听已结束");
+					}
+				},
+				ListenAlongSendMessage() {
+					//一起听发送消息
+					if (this.along.connected) {
+						obj = {
+							action: "chat_msg",
+							params: {
+								host_referer: this.along.is_host,
+								content: this.along.chat_input,
+								time: Date.now(),
+							}
+						}
+						this.along.session.send(JSON.stringify(obj));
+						//显示自己发的消息
+						this.along.chat_list.push({
+							role: "this",
+							content: this.along.chat_input,
+							time: Date.now(),
+						});
+						this.along.chat_input = "";
 					}
 				},
 				ListenAlongJoin() {
@@ -1490,10 +1621,6 @@
 							_this.along.session = null;
 						};
 
-						this.along.session.onopen = function () {
-							//_this.along.connected = true;
-						};
-
 						this.along.session.onmessage = this.ListenAlongMessageCallback;
 						this.along.session.onclose = this.ListenAlongCloseCallback;
 
@@ -1519,13 +1646,26 @@
 							_this.along.client_dialog = false;
 							_this.Msg("加入成功");
 						}
-					} else {
+					} else {//被邀方退出了一起听, 邀请主执行清理
 						if (_this.along.is_host && _this.along.session) {
-							console.log("对方已离开一起听");
 							_this.along.host_dialog = true;
+							_this.along.chat_input = "";
+							_this.along.chat_list = [];
+							_this.along.chat_unread = 0;
 							_this.Msg("对方已离开一起听歌");
 						}
+						_this.along.main_dialog = false;
 					}
+				},
+				'along.chat_list'() {
+					//滚动页面到底部
+					container = this.$refs["chatContainer"]
+					this.$nextTick(() => {
+						if (container) {
+							container.scrollTop = container.scrollHeight;
+						}
+					});
+
 				},
 			},
 			created() {
@@ -1593,7 +1733,17 @@
 				navigator.mediaSession.setActionHandler("nexttrack", () => { // 下一首
 					_this.PlayNext();
 				});
-			}
+			},
+			computed: {
+				ListenAlongBtnLabel() {
+					if (this.along.connected && this.along.chat_unread)
+						return "正在一起听歌 (" + this.along.chat_unread + "条未读)";
+					else if (this.along.connected)
+						return "正在一起听歌";
+					else
+						return "一起听歌";
+				}
+			},
 		});
 
 	</script>
