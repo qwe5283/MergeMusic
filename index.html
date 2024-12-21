@@ -494,7 +494,7 @@
 					</v-card>
 				</v-dialog>
 				<!-- 一起听main面板 -->
-				<v-dialog v-model="along.main_dialog">
+				<v-dialog v-model="along.main_dialog" max-width="500px">
 					<v-card>
 						<v-container>
 							<v-card-text style="display: flex;justify-content: center;font-size: x-large;">
@@ -1498,7 +1498,7 @@
 				},
 				ListenAlongSendMessage() {
 					//一起听发送消息
-					if (this.along.connected) {
+					if (this.along.connected && this.along.chat_input) {
 						obj = {
 							action: "chat_msg",
 							params: {
@@ -1710,9 +1710,11 @@
 				this.Msg("欢迎来到Ours-MergeMusic~");
 			},
 			mounted() {
+				// 初始化画布
+				const canvas = this.$refs['lrcCanvas'];
+				canvas.getContext('2d').fillRect(0, 0, canvas.width, canvas.height);
 				// 绑定画中画视频流
 				if (document.pictureInPictureEnabled) {
-					const canvas = this.$refs['lrcCanvas'];
 					const video = this.$refs['lrcVideo'];
 					const stream = canvas.captureStream(10); // 10 FPS
 					video.srcObject = stream;
